@@ -1,24 +1,11 @@
 from flask import Flask, jsonify, render_template
-import RPi.GPIO as GPIO
-import dht11
-import time
+import adafruit_dht
+import board
 
 app = Flask(__name__)
 
-# -------------------------
-# CONFIGURACIÓN DEL DHT11
-# -------------------------
-
-PIN_DHT = 7  # Pin físico N°7 (GPIO4). Cámbialo si usas otro.
-
-GPIO.setwarnings(False)
-GPIO.setmode(GPIO.BOARD)
-
-sensor = dht11.DHT11(pin=PIN_DHT)
-
-# -------------------------
-# RUTAS DE LA WEB
-# -------------------------
+# Sensor en GPIO17
+sensor = adafruit_dht.DHT11(board.D3)
 
 @app.route("/")
 def index():
@@ -26,16 +13,16 @@ def index():
 
 @app.route("/datos")
 def datos():
-    lectura = sensor.read()
+    try:
+        temperatura = sensor.temperature
+        humedad = sensor.humidity
 
-    if lectura.is_valid():
         return jsonify({
-            "temperatura": lectura.temperature,
-            "humedad": lectura.humidity
+            "temperatura": temperatura,
+            "humedad": humedad
         })
-    else:
-        return jsonify({"error": "No se pudo leer el DHT11"})
-
+    except Exception:
+        return jsonify({"error": "Error leyendo el sensor"})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)

@@ -11,6 +11,13 @@ sensor = adafruit_dht.DHT11(board.D3)
 def index():
     return render_template("index.html")
 
+@app.route('/salida')
+def salida():
+    valor = request.args.get('valor')
+    GPIO.output(17, int(valor))   # pin 17 por ejemplo
+    return jsonify({"ok": True})
+
+
 @app.route("/datos")
 def datos():
     try:
@@ -26,3 +33,4 @@ def datos():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+

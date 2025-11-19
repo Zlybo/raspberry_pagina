@@ -1,62 +1,136 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
-    <title>Monitor DHT11</title>
+    <title>Monitor Ambiental</title>
 
-    <!-- Tailwind CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-
-    <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen">
 
-<div class="bg-white shadow-lg rounded-2xl p-8 w-96 text-center">
-    <h1 class="text-2xl font-bold text-blue-600 mb-4">Monitor DHT11</h1>
+<body class="bg-gray-100 flex-1 items-center justify-center min-h-screen">
+    <div class="flex justify-center">
+        <div class="bg-white shadow-lg rounded-2xl p-8 w-96 text-center m-8">
+            <h1 class="text-2xl font-bold text-blue-600 mb-4 ">Monitor DHT11</h1>
 
-    <div class="space-y-4">
-        <p class="text-lg">Temperatura:
-            <span id="temp" class="font-semibold">--</span> °C
-        </p>
-        <p class="text-lg">Humedad:
-            <span id="hum" class="font-semibold">--</span> %
-        </p>
+            <div class="space-y-4">
+                <p class="text-lg">Temperatura: <span id="temp">--</span> °C</p>
+                <p class="text-lg">Humedad: <span id="hum">--</span> %</p>
+            </div>
+
+            <!-- AQUÍ VAN LAS GRÁFICAS -->
+            <canvas id="chartTemp"></canvas>
+            <canvas id="chartHum" class="mt-4"></canvas>
+        </div>
+
+
+        <div class="bg-white shadow-lg rounded-2xl p-8 w-96 text-center m-8">
+            <h1 class="text-2xl font-bold text-blue-600 mb-4">Detector de humo - MQ-9</h1>
+
+            <div class="space-y-4">
+                <p class="text-lg">Humo: <span id="humo">--</span> %</p>
+            </div>
+
+            <!-- AQUÍ VAN LAS GRÁFICAS -->
+            <canvas id="chartHumo"></canvas>
+        </div>
+
+        <div class="bg-white shadow-lg rounded-2xl p-8 w-96 text-center m-8">
+            <h1 class="text-2xl font-bold text-blue-600 mb-4">Particulas PM2.5 - PMS5003</h1>
+        </div>
     </div>
 
-    <p id="estado" class="mt-4 text-red-500 font-medium"></p>
-    <p id="actualizando" class="text-sm text-gray-400 italic mt-2"></p>
-</div>
+    <div class="flex-1 justify-items-center">
+        <div class="bg-white shadow-lg rounded-2xl p-8 w-96 text-center mt-4 m-8">
+            <h1 class="text-xl font-bold text-green-600 mb-4">Control de salidas</h1>
 
-<div class="bg-white shadow-lg rounded-2xl p-8 w-96 text-center">
-    <h1 class="text-2xl font-bold text-blue-600 mb-4">Detector de humo - MQ-7</h1>
-</div>
-
-<div class="bg-white shadow-lg rounded-2xl p-8 w-96 text-center">
-    <h1 class="text-2xl font-bold text-blue-600 mb-4">Particulas PM2.5 - PMS5003</h1>
-</div>
+            <button onclick="controlSalida(1)" class="bg-blue-500 text-white px-4 py-2 rounded-lg">Encender LED</button>
+            <button onclick="controlSalida(0)" class="bg-gray-500 text-white px-4 py-2 rounded-lg ml-2">Apagar
+                LED</button>
+        </div>
+    </div>
 
 
 
-<script>
-    function actualizarDatos() {
-        $("#actualizando").text("Actualizando...");
-        $.get("/datos", function(data) {
-            if (data.error) {
-                $("#estado").text("Error leyendo el sensor...");
-            } else {
-                $("#temp").text(data.temperatura);
-                $("#hum").text(data.humedad);
-                $("#estado").text("");
-            }
-            $("#actualizando").text("");
+    <script>
+        let datosTemp = [];
+        let datosHum = [];
+
+        const ctxTemp = document.getElementById('chartTemp').getContext('2d');
+        const ctxHum = document.getElementById('chartHum').getContext('2d');
+        const ctxHumo = document.getElementById('chartHumo').getContext('2d');
+
+
+        const grafTemp = new Chart(ctxTemp, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{ label: 'Temperatura (°C)', data: [] }]
+            },
+            options: { responsive: true }
         });
-    }
 
-    // Actualizar cada 2 segundos
-    setInterval(actualizarDatos, 2000);
-    actualizarDatos();
-</script>
+        const grafHum = new Chart(ctxHum, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{ label: 'Humedad (%)', data: [] }]
+            },
+            options: { responsive: true }
+        });
+
+        const grafHumo = new Chart(ctxHumo, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{ label: 'Humo (%)', data: [] }]
+            },
+            options: { responsive: true }
+        });
+
+        function actualizarDatos() {
+            $("#actualizando").text("Actualizando...");
+            $.get("/datos", function (data) {
+                if (!data.error) {
+                    $("#temp").text(data.temperatura);
+                    $("#hum").text(data.humedad);
+                    $("#humo").text(data.humo);
+
+
+                    // Agregar datos a la gráfica
+                    let hora = new Date().toLocaleTimeString();
+                    datosTemp.push(data.temperatura);
+                    datosHum.push(data.humedad);
+                    datosHumo.push(data.humo);
+
+
+                    grafTemp.data.labels.push(hora);
+                    grafTemp.data.datasets[0].data.push(data.temperatura);
+                    grafTemp.update();
+
+                    grafHum.data.labels.push(hora);
+                    grafHum.data.datasets[0].data.push(data.humedad);
+                    grafHum.update();
+
+                    grafHumo.data.labels.push(hora);
+                    grafHumo.data.datasets[0].data.push(data.humo);
+                    grafHumo.update();
+                }
+                $("#actualizando").text("");
+            });
+        }
+
+        function controlSalida(estado) {
+            $.get("/salida?valor=" + estado);
+        }
+
+        setInterval(actualizarDatos, 2000);
+        actualizarDatos();
+    </script>
+
 
 </body>
+
 </html>
